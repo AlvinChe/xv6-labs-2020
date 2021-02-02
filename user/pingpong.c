@@ -6,8 +6,8 @@
 #define STDOUT_FILENO 1
 #define STDDER_FILENO 2
 
-#define READEND 0
-#define WRITEEND 1
+#define ReadEnd 0
+#define WriteEnd 1
 
 typedef int pid_t;
 
@@ -34,26 +34,26 @@ int main(int argc, char *argv[])
 	if(pid ==0)
 	{ //child 
 		//close p2c write
-		close(fd_1[WRITEEND]);
+		close(fd_1[WriteEnd]);
 		//close c2p read
-		close(fd_2[READEND]);
+		close(fd_2[ReadEnd]);
 		
-		read(fd_1[READEND],&byte,1);
+		read(fd_1[ReadEnd],&byte,1);
 		printf("%d: received ping\n",getpid());
 		
-		write(fd_2[WRITEEND],&byte,1);
-		close(fd_1[READEND]);
-		close(fd_2[WRITEEND]);
+		write(fd_2[WriteEnd],&byte,1);
+		close(fd_1[ReadEnd]);
+		close(fd_2[WriteEnd]);
 	}else{
 	  //parent
-		close(fd_1[READEND]);
-		close(fd_2[WRITEEND]);
+		close(fd_1[ReadEnd]);
+		close(fd_2[WriteEnd]);
 	
 		// write to child
-		write(fd_1[WRITEEND],&byte,1);
+		write(fd_1[WriteEnd],&byte,1);
 		printf("%d: received pong\n",getpid());
-		close(fd_1[WRITEEND]);
-		close(fd_2[READEND]);
+		close(fd_1[WriteEnd]);
+		close(fd_2[ReadEnd]);
 		wait(0);
 	}
 	exit(0);
