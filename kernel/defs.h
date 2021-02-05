@@ -139,6 +139,14 @@ int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
 
+//21.2.4
+// sysinfo
+//kernel/kalloc.c  free memory
+uint64             freememory();
+//kernel/proc.c number of process
+int             proc_number();
+
+
 // trap.c
 extern uint     ticks;
 void            trapinit(void);

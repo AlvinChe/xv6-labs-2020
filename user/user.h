@@ -23,6 +23,14 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+// 21.2.4 
+int trace(int);
+// sysinfotest 调用了sysinfo
+struct sysinfo;
+int sysinfo(struct sysinfo *);
+//int sysinfo();
+
+
 
 // ulib.c
 int stat(const char*, struct stat*);

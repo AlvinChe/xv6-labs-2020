@@ -36,3 +36,6 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
+# new added 21.2.4
+entry("trace");
+entry("sysinfo");

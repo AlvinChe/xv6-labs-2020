@@ -259,22 +259,27 @@ int
 fork(void)
 {
   int i, pid;
+  //子进程
   struct proc *np;
+  //父进程
   struct proc *p = myproc();
 
-  // Allocate process.
+  // Allocate process.分配一个新的进程
+  // 会给新进程加锁
   if((np = allocproc()) == 0){
     return -1;
   }
 
+  // 拷贝父进程的数据到子进程
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
     return -1;
   }
+  // sz是Size of process memory (bytes)
   np->sz = p->sz;
-
+  // 设置子进程的父进程
   np->parent = p;
 
   // copy saved user registers.
@@ -287,11 +292,16 @@ fork(void)
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
+  
+  // Current directory
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
+ 
+  //21.2.4 sys trace 增加子进程复制mask的过程
+  np->mask = p->mask;
 
   np->state = RUNNABLE;
 
@@ -692,4 +702,23 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+
+
+//21.2.4 
+// To collect the number of processes, add a function to kernel/proc.c
+int 
+proc_number()
+{
+	int number=0;
+	struct proc *p;    
+	for(p = proc; p < &proc[NPROC];p++)
+	{
+		acquire(&p->lock);
+		if (p->state != UNUSED) 
+			number++;
+		release(&p->lock);
+	}
+	return number;
 }
