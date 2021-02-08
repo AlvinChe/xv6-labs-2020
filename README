@@ -35,11 +35,11 @@
      c.因为要编译时,识别user/trace.c，需要添加声明到user/user.h，(添加 int trace(int);)添加一个entry到user/usys.pl( print "#include \"kernel/syscall.h\"\n"; 添加 entry("trace");)
      和一个syscall number到kernel/syscall.h中，这就完成系统函数添加的过程；
      
-     然后就到了实现kernel中trace的部分，在 kernel/sysproc.c中添加sys_trace() 函数，用于传递参数，
-     该参数是之前没有的，需要在proc structure (see kernel/proc.h)中添加一下，int mask；
-     然后修改kernel/syscall.c，在syscall中添加syscall的字符串数组，添加mask和syscall之间的代码。
-     
-     最后，不要忘记修改fork（kernel/proc.c）的代码，在子进程中也传递参数
+  然后就到了实现kernel中trace的部分，在 kernel/sysproc.c中添加sys_trace() 函数，用于传递参数，
+  该参数是之前没有的，需要在proc structure (see kernel/proc.h)中添加一下，int mask；
+  然后修改kernel/syscall.c，在syscall中添加syscall的字符串数组，添加mask和syscall之间的代码。
+
+  最后，不要忘记修改fork（kernel/proc.c）的代码，在子进程中也传递参数
      
 4.2 sysinfo
 	流程和4.1类似
@@ -59,6 +59,8 @@
 
 
 代码参考
+
+
 1.【MIT-6.S081-2020】Lab2 syscall - lemonman的文章 - 知乎
 https://zhuanlan.zhihu.com/p/274369780
 2.MIT 6.S081 2020 Lab2 system calls讲解 - 北海草鱼的文章 - 知乎
