@@ -108,6 +108,8 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+//21.02.07
+void            proc_freekpt(pagetable_t pagetable);
 
 // swtch.S
 void            swtch(struct context*, struct context*);
@@ -178,6 +180,22 @@ uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
+//21.02.06
+// 添加vmprint函数
+void 			vmprint(pagetable_t);
+//21.02.07
+// 添加新的函数
+pagetable_t     kvm_pagetable_init(struct proc *);
+void            kpt_proc_vmmap(pagetable_t, uint64, uint64, uint64, int);
+//使用vm.c的walk函数
+pte_t *         walk(pagetable_t, uint64, int);
+//21.02.08
+void            u2k_vmcopy(pagetable_t ,pagetable_t ,uint64 , uint64 );
+
+//vmcopyin.c
+int             copyin_new(pagetable_t , char *, uint64 , uint64 );
+int             copyinstr_new(pagetable_t , char *, uint64 , uint64 );
+
 
 // plic.c
 void            plicinit(void);

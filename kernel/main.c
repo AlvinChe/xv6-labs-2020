@@ -35,7 +35,11 @@ main()
     pci_init();
     sockinit();
 #endif    
+    printf("test ---- before ---userinit\n");
+
     userinit();      // first user process
+    printf("test ---- after ---userinit\n");
+
     __sync_synchronize();
     started = 1;
   } else {

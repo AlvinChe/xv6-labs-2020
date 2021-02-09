@@ -21,6 +21,7 @@ exec(char *path, char **argv)
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
+
   begin_op();
 
   if((ip = namei(path)) == 0){
@@ -75,6 +76,12 @@ exec(char *path, char **argv)
   sp = sz;
   stackbase = sp - PGSIZE;
 
+
+  // 21.2.8
+  // 在exec的时候，将用户的pgt复制一份给kernel
+  u2k_vmcopy(pagetable, p->kpagetable, 0, sz);
+  //--------
+
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
@@ -116,6 +123,14 @@ exec(char *path, char **argv)
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
+  // 21.2.6
+  //Insert if(p->pid==1) vmprint(p->pagetable) in exec.c just before the return argc
+  if (p->pid == 1)
+  {
+    /* code */
+    vmprint(p->pagetable);
+  }
+
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:
@@ -155,3 +170,4 @@ loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz
   
   return 0;
 }
+

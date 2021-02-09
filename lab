@@ -1,0 +1,9 @@
+1.vmprint
+  最简单的题目，需要先过一遍课程和讲义。
+  按照提示在kernel/vm.c创建vmprint函数，代码的过程和kernel/vm.c的freewalk类似。pte & PTE_V表示是叶子，(pte & (PTE_R|PTE_W|PTE_X)表示有子节点，然后递归就可以。
+  在kernel/defs.h中添加vmprint的函数声明。
+
+2.有点难，自己没有做出来，是参考别人的
+
+
+3.

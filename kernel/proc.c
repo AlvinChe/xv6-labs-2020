@@ -20,6 +20,7 @@ static void wakeup1(struct proc *chan);
 static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
+extern pagetable_t kernel_pagetable;
 
 // initialize the proc table at boot time.
 void
@@ -31,15 +32,20 @@ procinit(void)
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
 
-      // Allocate a page for the process's kernel stack.
-      // Map it high in memory, followed by an invalid
-      // guard page.
-      char *pa = kalloc();
-      if(pa == 0)
-        panic("kalloc");
-      uint64 va = KSTACK((int) (p - proc));
-      kvmmap(va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
-      p->kstack = va;
+      // 这里的初始化工作被分摊到allocproc里面了
+      // // Allocate a page for the process's kernel stack.
+      // // Map it high in memory, followed by an invalid
+      // // guard page.
+      // char *pa = kalloc();
+      // if(pa == 0)
+      //   panic("kalloc");
+      // // #define KSTACK(p) (TRAMPOLINE - ((p)+1)* 2*PGSIZE)
+      // // memlayout.h
+      // // 分配stack
+      // uint64 va = KSTACK((int) (p - proc));
+      // // 对kernel_pagetable的分配地址
+      // kpt_proc_vmmap(p->kpagetable, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+      // p->kstack = va;
   }
   kvminithart();
 }
@@ -89,6 +95,7 @@ allocpid() {
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
+// 21.2.6 修改 allocproc的部分，给kernel的pagetable初始化
 static struct proc*
 allocproc(void)
 {
@@ -102,6 +109,7 @@ allocproc(void)
       release(&p->lock);
     }
   }
+
   return 0;
 
 found:
@@ -121,6 +129,31 @@ found:
     return 0;
   }
 
+  // ----⬇️
+  // An empty kernel page table.
+  // kerbel/vm.c 中的kvm_pagetable_init
+  // 21.2.6 kernel的pgtbl初始化
+  p->kpagetable = kvm_pagetable_init(p);
+  if(p->kpagetable == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
+  // copy from kernel/pro.c -> procinit()
+  // 21.2.9 proinit的这部分代码没有删掉，所以出现了错误;错误原因不是这个
+  // 用于给内存的pagetable分配内存
+  char *pa = kalloc();
+  if(pa == 0)
+    panic("kalloc eror in allocproc");
+  uint64 va = KSTACK((int) (p - proc));
+  
+  // // 添加kernel stack的映射到用户的kernel pagetable里
+  kpt_proc_vmmap(p->kpagetable, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+  p->kstack = va;
+
+  //----⬆️
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -129,6 +162,31 @@ found:
 
   return p;
 }
+// free kernel pagetable
+// 模仿vm.c中的freewalk，但注意物理地址没有释放
+// 最后一层叶节点没有释放，标志位并没有重置
+// 故需要修改一下
+void 
+proc_freekpt(pagetable_t kpt)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  for(int i = 0; i < 512; i++){
+    pte_t pte = kpt[i];
+    if((pte & PTE_V)){
+      kpt[i] = 0;
+      // 如果有子节点
+      if ((pte & (PTE_R|PTE_W|PTE_X)) == 0)
+      {
+        uint64 child = PTE2PA(pte);
+        proc_freekpt((pagetable_t)child);
+      }
+    } else if(pte & PTE_V){
+      panic("proc free kpt: leaf");
+    }
+  }
+  kfree((void*)kpt);
+}
+
 
 // free a proc structure and the data hanging from it,
 // including user pages.
@@ -139,8 +197,32 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+
+  // 21.2.7
+  // 删除kernel stack
+  if (p->kstack)
+  {
+    pte_t* pte = walk(p->kpagetable, p->kstack, 0);
+    if (pte == 0)
+      panic("freeproc: kstack");
+    kfree((void*)PTE2PA(*pte));
+  }
+  p->kstack = 0;
+
+  
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+
+  // 释放kernel的pagetable
+  // free kernel pagetable
+  // 模仿vm.c中的freewalk，但注意物理地址没有释放
+  // 最后一层叶节点没有释放，标志位并没有重置
+  // 故需要修改一下
+  if (p->kpagetable)
+  {
+    proc_freekpt(p->kpagetable);
+  }
+
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -212,18 +294,31 @@ void
 userinit(void)
 {
   struct proc *p;
+  // printf("userinit ---- inside --- before --allocproc \n");
 
   p = allocproc();
   initproc = p;
+  // printf("userinit ---- after --- before --allocproc \n");
+
   
   // allocate one user page and copy init's instructions
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
+  // 21.2.8
+  // 在userinit的时候，将用户的pgt复制一份给kernel
+  // printf("p->pagetable\n");
+  // vmprint(p->pagetable);
+  // printf("\np->kpagetable\n");
+  // vmprint(p->kpagetable);
+  u2k_vmcopy(p->pagetable, p->kpagetable, 0, p->sz);
+  //--------
+
 
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
   p->trapframe->sp = PGSIZE;  // user stack pointer
+
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -243,9 +338,21 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
+    // 21.2.8
+    // 题目要求
+    if (PGROUNDUP(sz+n)>=PLIC)
+    {
+      /* code */
+      return -1;
+    }
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
+
+    // 21.2.8
+    // 在sbrk的时候，将用户的pgt复制一份给kernel
+    u2k_vmcopy(p->pagetable, p->kpagetable, sz-n, sz);
+   //--------
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
@@ -288,6 +395,11 @@ fork(void)
     if(p->ofile[i])
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
+
+  // 21.2.8
+  // 在fork的时候，将用户的pgt复制一份给kernel
+  u2k_vmcopy(np->pagetable, np->kpagetable, 0, np->sz);
+  //--------
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
@@ -473,6 +585,15 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        // 21.2.7'
+        // lab page table
+        // 修改调度器，将内存的pgtbl存到stap寄存器中
+        // 代码参考 kernel/vm.c
+        w_satp(MAKE_SATP(p->kpagetable));
+        sfence_vma();
+
+
+
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -485,6 +606,11 @@ scheduler(void)
     }
 #if !defined (LAB_FS)
     if(found == 0) {
+      
+      // 没有进程在运行则使用内核原来的kernel pagtable
+      w_satp(MAKE_SATP(kernel_pagetable));
+      sfence_vma();
+      
       intr_on();
       asm volatile("wfi");
     }

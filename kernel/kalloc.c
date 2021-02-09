@@ -27,6 +27,7 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  // 将所有内存清点，然后存入kmem.freelist中
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -76,6 +77,9 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
+  // riscv.h 
+  // #define PGSIZE 4096 // bytes per page
+  // 在r的前4096的字节中填为5，5是随便填的，什么都可以
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
