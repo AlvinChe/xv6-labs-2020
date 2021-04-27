@@ -91,5 +91,13 @@ r_fp()
 其实没有理清楚终端的代码机制
 
 三个月一过也忘记了怎么提交git
+修改.git/config
 原地址的url = git://g.csail.mit.edu/xv6-labs-2020
+     url = git://g.csail.mit.edu/xv6-labs-2020
 修改成自己的仓库地址
+修改完成后
+git add .
+git commit -m ""
+git push 
+然后就成功了
+
