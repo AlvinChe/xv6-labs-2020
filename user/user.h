@@ -23,6 +23,13 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+//-------start------------
+// 2021年04月25日20:14:38
+// add new system call for lab trap-part3    
+
+int sigalarm(int ticks, void (*handler)());
+int sigreturn(void);
+//--------end--------------
 
 // ulib.c
 int stat(const char*, struct stat*);

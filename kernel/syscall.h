@@ -20,3 +20,9 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+
+// ------start-------
+// 2021年04月25日20:24:02
+#define SYS_sigalarm 22
+#define SYS_sigreturn 23
+// -------end--------

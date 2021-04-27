@@ -106,6 +106,12 @@ allocproc(void)
 
 found:
   p->pid = allocpid();
+  
+  //2021年04月25日21:56:13
+  // init p->total_ticks
+  p->total_ticks = 0;
+  p->is_handler_on = 1;
+  //-----end-----
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -576,6 +582,8 @@ sleep(void *chan, struct spinlock *lk)
   p->state = SLEEPING;
 
   sched();
+  // backtrace();
+  
 
   // Tidy up.
   p->chan = 0;

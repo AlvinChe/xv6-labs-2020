@@ -104,6 +104,11 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
+// --------start-----------
+// 2021年04月25日21:17:28
+extern uint64 sys_sigalarm(void);
+extern uint64 sys_sigreturn(void);
+//---------end ------------
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -127,6 +132,11 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+//------start-----------
+//2021年04月25日21:19:16
+[SYS_sigalarm] sys_sigalarm,
+[SYS_sigreturn] sys_sigreturn,
+//------start-----------
 };
 
 void

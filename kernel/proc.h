@@ -103,4 +103,53 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // -----start-----
+  //2021年04月25日21:38:16
+  //添加一个新的数据结构
+  void (*handler)();
+  int alarm_interval;
+  int total_ticks;
+  int is_handler_on;
+  
+  // 2021年04月27日15:49:21
+    int is_handler_in;           // 判断是否还在alarm函数里
+
+  // 需要保存的历史寄存器用
+  uint64 his_epc;           
+  uint64 his_ra;
+  uint64 his_sp;
+
+  uint64 his_gp;
+  uint64 his_tp;
+  uint64 his_t0;
+  uint64 his_t1;
+  uint64 his_t2;
+  uint64 his_t3;
+  uint64 his_t4;
+  uint64 his_t5;
+  uint64 his_t6;
+  uint64 his_a0;
+  uint64 his_a1;
+  uint64 his_a2;
+  uint64 his_a3;
+  uint64 his_a4;
+  uint64 his_a5;
+  uint64 his_a6;
+  uint64 his_a7;
+  uint64 his_s0;
+  uint64 his_s1;
+  uint64 his_s2;
+  uint64 his_s3;
+  uint64 his_s4;
+  uint64 his_s5;
+  uint64 his_s6;
+  uint64 his_s7;
+  uint64 his_s8;
+  uint64 his_s9;
+  uint64 his_s10;
+  uint64 his_s11;
+
+  //------end----------
+
 };

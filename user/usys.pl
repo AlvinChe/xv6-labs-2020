@@ -36,3 +36,9 @@ entry("getpid");
 entry("sbrk");
 entry("sleep");
 entry("uptime");
+
+#--------START---------
+# 2021年04月25日20:20:26
+entry("sigalarm");
+entry("sigreturn");
+#---------END----------

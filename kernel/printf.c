@@ -25,6 +25,27 @@ static struct {
 
 static char digits[] = "0123456789abcdef";
 
+//21-2-16
+// 打印栈帧
+// #include "kernel/riscv.h"
+void 
+backtrace(void)
+{
+  uint64 fp = r_fp();
+  // 找到栈底结束
+  uint64 bottom = PGROUNDUP(fp);
+  uint64 return_addr;
+  
+  printf("backtrace:\n");
+  while (fp < bottom)
+  {
+    return_addr = *(uint64*)(fp-8);
+    fp = *(uint64*)(fp-16);
+    printf("%p\n", return_addr);
+  }
+}
+
+
 static void
 printint(int xx, int base, int sign)
 {
@@ -121,6 +142,7 @@ panic(char *s)
   printf("panic: ");
   printf(s);
   printf("\n");
+  backtrace();
   panicked = 1; // freeze uart output from other CPUs
   for(;;)
     ;
