@@ -88,6 +88,8 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   return &pagetable[PX(0, va)];
 }
 
+
+
 // Look up a virtual address, return the physical address,
 // or 0 if not mapped.
 // Can only be used to look up user pages.
@@ -305,13 +307,16 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 // physical memory.
 // returns 0 on success, -1 on failure.
 // frees any allocated pages on failure.
+
+#define PTE_COW (1L << 8) 
+
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
+//  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -320,14 +325,27 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
-    }
+//-------start-----------------
+//2021年04月28日21:21:59
+	
+//    if((mem = kalloc()) == 0)
+//      goto err;
+//    memmove(mem, (char*)pa, PGSIZE);
+//    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+//      kfree(mem);
+//      goto err;
+//    }
+    if(flags & PTE_W){
+	  flags = (flags | PTE_COW) & (~PTE_W);
+	  *pte = PA2PTE(pa) | flags;	
+	}
+
+	increase_rc((void*)pa);
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+	  goto err;
+	}
   }
+// ------end--------------------
   return 0;
 
  err:
@@ -357,7 +375,12 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   uint64 n, va0, pa0;
 
   while(len > 0){
-    va0 = PGROUNDDOWN(dstva);
+	va0 = PGROUNDDOWN(dstva); 
+	//----------start-------
+	if (cow_alloc(pagetable, va0) != 0)
+      return -1;
+	//----------end---------
+
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;

@@ -23,9 +23,52 @@ struct {
   struct run *freelist;
 } kmem;
 
+//---------start------------
+
+struct{
+	struct spinlock lock;
+	int count[PGROUNDUP(PHYSTOP) / PGSIZE];
+}refcount;
+#define PA2IDX(pa) (((uint64)pa) >> 12)
+
+void rcinit(){
+	initlock(&refcount.lock, "reference count");
+	acquire(&kmem.lock);
+	for(int i =0; i<PGROUNDUP(PHYSTOP) / PGSIZE;i++){
+		refcount.count[i]=0;
+	}
+	release(&kmem.lock);
+}
+
+void
+increase_rc(void *pa)
+{
+  acquire(&refcount.lock);
+  refcount.count[PA2IDX(pa)]++;
+  release(&refcount.lock);
+}
+
+void
+decrease_rc(void *pa)
+{
+  acquire(&refcount.lock);
+  refcount.count[PA2IDX(pa)]--;
+  release(&refcount.lock);
+}
+int
+get_rc(void *pa)
+{
+  acquire(&refcount.lock);
+  int rc = refcount.count[PA2IDX(pa)];
+  release(&refcount.lock);
+  return rc;
+}
+
+
 void
 kinit()
 {
+  rcinit();// newly added
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
 }
@@ -36,8 +79,12 @@ freerange(void *pa_start, void *pa_end)
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
-    kfree(p);
+  {
+    increase_rc((void*)p);
+	kfree(p);
+  }
 }
+
 
 // Free the page of physical memory pointed at by v,
 // which normally should have been returned by a
@@ -50,6 +97,11 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
+  //------new-------
+  decrease_rc(pa);
+  if (get_rc(pa) > 0)
+    return;
+  //------end-------
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
@@ -77,6 +129,12 @@ kalloc(void)
   release(&kmem.lock);
 
   if(r)
-    memset((char*)r, 5, PGSIZE); // fill with junk
+  {
+	 memset((char*)r, 5, PGSIZE); // fill with junk
+     increase_rc((void*)r);//newly added
+  }
+
   return (void*)r;
 }
+
+//-----------end----------------

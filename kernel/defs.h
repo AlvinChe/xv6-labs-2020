@@ -63,6 +63,12 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+//---------start---------
+void            increase_rc(void *);
+void            decrease_rc(void *);
+int             get_rc(void *);
+//---------end-----------
+
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -146,6 +152,11 @@ void            trapinithart(void);
 extern struct spinlock tickslock;
 void            usertrapret(void);
 
+//-------new---------
+int				cow_alloc(pagetable_t, uint64);
+//-------end---------
+
+
 // uart.c
 void            uartinit(void);
 void            uartintr(void);
@@ -168,6 +179,9 @@ void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);
 uint64          walkaddr(pagetable_t, uint64);
+//----------start------------
+pte_t*          walk(pagetable_t, uint64, int);
+//----------end--------------
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
@@ -185,3 +199,7 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+
+//new define for page_cow
+#define PTE_COW (1L << 8)
